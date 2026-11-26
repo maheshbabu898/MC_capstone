@@ -1,0 +1,10 @@
+{
+  "episodes": 5000,
+  "seed": 7,
+  "initial_mean_reward": -4.022497026725771,
+  "final_mean_reward": -1.3374568497231853,
+  "final_epsilon": 0.03,
+  "mean_training_loss": 0.19597471506438688,
+  "model_path": "C:\\Users\\bmahe\\AI-Mobile-Edge-Computing\\ai_engine\\models\\dqn.pt",
+  "results_are_simulated": true
+}

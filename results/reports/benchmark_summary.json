@@ -1,0 +1,44 @@
+[
+  {
+    "policy": "dqn",
+    "average_latency_seconds": 0.6648895597802934,
+    "average_energy_joules": 1.0062207088700597,
+    "success_rate": 1.0,
+    "average_reward": -0.785387688138285
+  },
+  {
+    "policy": "local_only",
+    "average_latency_seconds": 0.6503802498792431,
+    "average_energy_joules": 1.3007604997584863,
+    "success_rate": 1.0,
+    "average_reward": -0.8790455635135518
+  },
+  {
+    "policy": "edge_only",
+    "average_latency_seconds": 3.3524810502398945,
+    "average_energy_joules": 1.2106911007064665,
+    "success_rate": 1.0,
+    "average_reward": -2.6101094942903384
+  },
+  {
+    "policy": "cloud_only",
+    "average_latency_seconds": 3.3788808812455473,
+    "average_energy_joules": 1.7394825103993294,
+    "success_rate": 1.0,
+    "average_reward": -2.8243325531383348
+  },
+  {
+    "policy": "greedy",
+    "average_latency_seconds": 0.6655602766370599,
+    "average_energy_joules": 1.0006504093533197,
+    "success_rate": 1.0,
+    "average_reward": -0.7838740492643244
+  },
+  {
+    "policy": "random",
+    "average_latency_seconds": 2.380730712366259,
+    "average_energy_joules": 1.38922779442279,
+    "success_rate": 1.0,
+    "average_reward": -2.0460214652019233
+  }
+]

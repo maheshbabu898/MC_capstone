@@ -1,0 +1,47 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      MEC_DATABASE_PATH: /data/mec.sqlite3
+      MEC_UPLOAD_DIR: /data/uploads
+      MEC_EDGE_URL: http://edge:8001
+      MEC_CLOUD_URL: http://cloud:8002
+      MEC_MODEL_PATH: /models/dqn.pt
+    volumes:
+      - mec-data:/data
+      - ./ai_engine/models:/models
+      - ./results:/app/results
+    depends_on:
+      edge:
+        condition: service_healthy
+      cloud:
+        condition: service_healthy
+  edge:
+    build:
+      context: .
+      dockerfile: edge_server/Dockerfile
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+  cloud:
+    build:
+      context: .
+      dockerfile: cloud_server/Dockerfile
+    ports:
+      - "8002:8002"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mec-data:
