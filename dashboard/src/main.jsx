@@ -309,7 +309,7 @@ function TaskPage({ tasks, onRefresh, apiUrl }) {
       let created;
       if (type === "compute") {
         const response = await fetch(`${effectiveUrl}/api/tasks/create`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type": "application/json", "bypass-tunnel-reminder": "true" },
           body: JSON.stringify({ task_type: type, name: "Dashboard compute task",
             input_size_mb: 0.1, cpu_cycles_giga: Number(cycles) }),
         });
@@ -321,13 +321,18 @@ function TaskPage({ tasks, onRefresh, apiUrl }) {
         form.append("file", file);
         form.append("task_type", type);
         form.append("cpu_cycles_giga", cycles);
-        const response = await fetch(`${effectiveUrl}/api/tasks/upload`, { method: "POST", body: form });
+        const response = await fetch(`${effectiveUrl}/api/tasks/upload`, {
+          method: "POST",
+          headers: { "bypass-tunnel-reminder": "true" },
+          body: form,
+        });
         if (!response.ok) throw new Error(await response.text());
         created = await response.json();
       }
       setTask(created);
       const decisionResponse = await fetch(`${effectiveUrl}/api/offloading/decide`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json", "bypass-tunnel-reminder": "true" },
         body: JSON.stringify({ task_id: created.id }),
       });
       if (!decisionResponse.ok) throw new Error(await decisionResponse.text());
@@ -341,7 +346,8 @@ function TaskPage({ tasks, onRefresh, apiUrl }) {
     setBusy(true); setError("");
     try {
       const response = await fetch(`${effectiveUrl}/api/offloading/execute`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json", "bypass-tunnel-reminder": "true" },
         body: JSON.stringify({ task_id: task.id }),
       });
       if (!response.ok) throw new Error(await response.text());

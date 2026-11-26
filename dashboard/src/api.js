@@ -18,8 +18,20 @@ export function setBaseUrl(url) {
 
 export async function apiGet(path) {
   const url = getBaseUrl();
-  const response = await fetch(`${url}${path}`);
-  if (!response.ok) throw new Error(`API request failed (${response.status}): ${await response.text()}`);
+  const response = await fetch(`${url}${path}`, {
+    headers: {
+      "bypass-tunnel-reminder": "true",
+      "Bypass-Tunnel-Reminder": "true",
+    },
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    // If localtunnel returned its HTML interstitial reminder page
+    if (text.includes("Tunnel website ahead!") || response.status === 511) {
+      throw new Error(`Localtunnel verification needed: Open ${url} once in a new tab, click "Click to Continue", then refresh.`);
+    }
+    throw new Error(`API request failed (${response.status}): ${text.slice(0, 150)}`);
+  }
   return response.json();
 }
 
