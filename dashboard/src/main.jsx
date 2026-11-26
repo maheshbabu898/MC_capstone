@@ -4,7 +4,7 @@ import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from "recharts";
-import { apiGet, baseUrl } from "./api";
+import { apiGet, getBaseUrl, setBaseUrl } from "./api";
 import "./styles.css";
 
 const COLORS = ["#6e82ff", "#24b99a", "#f3a64a", "#ee6680", "#50afdb", "#a48bff"];
@@ -38,6 +38,11 @@ function App() {
   const [data, setData] = useState({ performance: null, comparison: null, resources: null, tasks: [] });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [apiUrl, setApiUrl] = useState(getBaseUrl());
+
+  const isMixedContent = typeof window !== "undefined" &&
+    window.location.protocol === "https:" &&
+    apiUrl.startsWith("http://");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -58,6 +63,15 @@ function App() {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  const handleChangeUrl = () => {
+    const entered = window.prompt("Enter your Backend API URL:\n(For Vercel HTTPS, use an HTTPS URL like ngrok or cloud backend)", apiUrl);
+    if (entered !== null) {
+      setBaseUrl(entered);
+      setApiUrl(getBaseUrl());
+      setTimeout(refresh, 100);
+    }
+  };
 
   const summary = data.comparison?.comparison || [];
   const distribution = Object.entries(data.performance?.location_distribution || {}).map(
@@ -121,8 +135,13 @@ function App() {
         </nav>
         <div className="sidebar-bottom">
           <div className="connection-indicator"><i /> Backend connection</div>
-          <span className="api-address">{baseUrl}</span>
-          <a href={`${baseUrl}/docs`} target="_blank" rel="noreferrer">Open API documentation ↗</a>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, margin: "4px 0" }}>
+            <span className="api-address" style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis" }}>{apiUrl}</span>
+            <button onClick={handleChangeUrl} style={{ background: "#212d42", border: "1px solid #33435e", color: "#a8b5cc", borderRadius: 4, padding: "2px 6px", fontSize: 9 }}>
+              Edit
+            </button>
+          </div>
+          <a href={`${apiUrl}/docs`} target="_blank" rel="noreferrer">Open API documentation ↗</a>
         </div>
       </aside>
 
@@ -140,10 +159,40 @@ function App() {
           </div>
         </header>
 
-        {error && <div className="error-banner" role="alert">
-          <span><strong>Unable to load dashboard data</strong><br />{error}</span>
-          <button onClick={refresh}>Retry</button>
-        </div>}
+        {isMixedContent && (
+          <div className="error-banner" style={{ background: "#291b12", borderColor: "#f5a623", color: "#ffd599", display: "block" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <strong style={{ fontSize: 13 }}>⚠️ Browser Mixed Content Block Detected</strong>
+                <p style={{ margin: "5px 0", fontSize: 12, lineHeight: 1.5 }}>
+                  This dashboard was loaded over <strong>HTTPS ({window.location.origin})</strong> on Vercel, but is trying to connect to insecure <strong>HTTP ({apiUrl})</strong>.<br />
+                  Browsers strictly block HTTPS websites from calling unencrypted local HTTP addresses.
+                </p>
+                <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <a href="http://127.0.0.1:5173" style={{ background: "#3d78d8", color: "#ffffff", padding: "6px 12px", borderRadius: 6, textDecoration: "none", fontSize: 11, fontWeight: "bold" }}>
+                    👉 Open Local Dashboard at http://127.0.0.1:5173
+                  </a>
+                  <button onClick={handleChangeUrl} style={{ background: "#4a3319", border: "1px solid #f5a623", color: "#ffe0b2", borderRadius: 6, padding: "6px 12px", fontSize: 11 }}>
+                    ⚙️ Set HTTPS Backend URL (ngrok / tunnel)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isMixedContent && error && (
+          <div className="error-banner" role="alert">
+            <span><strong>Unable to load dashboard data</strong><br />{error}</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={handleChangeUrl} style={{ background: "transparent", border: "1px solid #80525f", borderRadius: 6, padding: "5px 10px", color: "#ffdce2", fontSize: 11 }}>
+                Change URL
+              </button>
+              <button onClick={refresh}>Retry</button>
+            </div>
+          </div>
+        )}
+
         {!error && loading && <div className="loading-banner">Loading performance, task history, and server resources…</div>}
 
         {section === "Overview" && (
@@ -229,7 +278,7 @@ function App() {
           </>
         )}
 
-        {section === "Tasks" && <TaskPage tasks={data.tasks} onRefresh={refresh} />}
+        {section === "Tasks" && <TaskPage tasks={data.tasks} onRefresh={refresh} apiUrl={apiUrl} />}
         {section === "Monitoring" && <MonitoringPage resources={data.resources} services={services} />}
         {section === "Analytics" && <AnalyticsPage
           chartSummary={chartSummary} summary={summary}
@@ -240,7 +289,7 @@ function App() {
   );
 }
 
-function TaskPage({ tasks, onRefresh }) {
+function TaskPage({ tasks, onRefresh, apiUrl }) {
   const [type, setType] = useState("compute");
   const [file, setFile] = useState(null);
   const [cycles, setCycles] = useState("0.05");
@@ -251,13 +300,15 @@ function TaskPage({ tasks, onRefresh }) {
   const [busy, setBusy] = useState(false);
   const [inspectedTask, setInspectedTask] = useState(null);
 
+  const effectiveUrl = apiUrl || getBaseUrl();
+
   async function submit(event) {
     event.preventDefault();
     setBusy(true); setError(""); setDecision(null); setResult(null);
     try {
       let created;
       if (type === "compute") {
-        const response = await fetch(`${baseUrl}/api/tasks/create`, {
+        const response = await fetch(`${effectiveUrl}/api/tasks/create`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ task_type: type, name: "Dashboard compute task",
             input_size_mb: 0.1, cpu_cycles_giga: Number(cycles) }),
@@ -270,12 +321,12 @@ function TaskPage({ tasks, onRefresh }) {
         form.append("file", file);
         form.append("task_type", type);
         form.append("cpu_cycles_giga", cycles);
-        const response = await fetch(`${baseUrl}/api/tasks/upload`, { method: "POST", body: form });
+        const response = await fetch(`${effectiveUrl}/api/tasks/upload`, { method: "POST", body: form });
         if (!response.ok) throw new Error(await response.text());
         created = await response.json();
       }
       setTask(created);
-      const decisionResponse = await fetch(`${baseUrl}/api/offloading/decide`, {
+      const decisionResponse = await fetch(`${effectiveUrl}/api/offloading/decide`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ task_id: created.id }),
       });
@@ -289,7 +340,7 @@ function TaskPage({ tasks, onRefresh }) {
   async function execute() {
     setBusy(true); setError("");
     try {
-      const response = await fetch(`${baseUrl}/api/offloading/execute`, {
+      const response = await fetch(`${effectiveUrl}/api/offloading/execute`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ task_id: task.id }),
       });
